@@ -4,13 +4,13 @@ A linear regression analysis of historical video game sales data to advise Squar
 
 ## Overview
 This project uses VGChartz sales data (2000–2020) to estimate how critic score, release year, genre, and platform category relate to game sales. 
-Separate models are estimated for overall sales and for four regions: North America (NA), Japan (JP), PAL (Phase Alternating Line, including most of Europe, Australia, New Zealand, parts of Asia, Africa, and South America), and Other. 
+Separate models are estimated for overall sales and for four regions: North America (NA), Japan (JP), PAL (Europe, Australia, New Zealand, and other PAL territories), and Other. 
 The goal is to provide evidence-based guidance for Square Enix on where to release games and which genres perform best by region.
 
 ## Data
 - **Source**: VGChartz (publicly available video game sales estimates)
 - **Period:** 2000–2020
-- **Unit of analysis:** Game-platform on release
+- **Unit of analysis:** Game-platform release
 - **Rows:** ~15,842 (after cleaning, varies by region)
 - **Key variables:**
   - `total_sales`, `na_sales`, `jp_sales`, `pal_sales`, `other_sales` (millions of copies)
@@ -33,7 +33,7 @@ The trimmed dataset has cut top 1% and bottom 1% data by `total_sales`.
 - Log-transformed sales using `log1p` to handle skew and zero values.
 
 ### Model specification
-- **Dependent variable (y)**: `log1p_sales_` for overall or regional sales.
+- **Dependent variable (y)**: `log_region_sales` for overall or regional sales.
 - **Independent variables (x)**:
   - Quantitative: `critic_c` centred at 7.3 (median), `critic_missing`, `year_c` (centred at 2010)
   - Genre dummies (reference: *Role-Playing*)
@@ -87,18 +87,19 @@ From the `scripts/` folder:
 - `output/figures/` - heatmap, forest plots, genre comparison, platform comparison, coefficient comparison
 
 ## Key Findings
-- **Critic score** has a positive association with sales *(11.8%)*, strongest in `NA` *(8.2%)* and `PAL` *(6.0%)*, weak in `JP` *(1.3%)*.
-- **Missing critic score** is a large negative signal overall *(-23.3%)*, but small in `JP` *(-1.8%)*.
-- Effect of **Year** is practically negligible *(-0.1%)* and confounded with time-on-market. It is estimated that older released games have more time to be distributed, leading to a slightly higher sales, though the effect is minimal
-- For **Game Genre**, in `JP`, RPG dominates, almost every other genre sells less. In `NA` and `PAL`, Shooter, Sports, and Racing sell more than RPG.
-- For **Platform**, Sony Home is the strongest console overall. Microsoft Home is statistically equal to Sony Home in `NA`, while Nintendo Handheld/Hybrid is equal to Sony Home in `JP`. PC/Mac is undercounted by VGChartz and should not be interpreted as weak.
+- **Critic score** has a positive association with sales *(11.8%)*, strongest in `NA` *(8.2%)* and `PAL` *(6.0%)*, weak in `JP` *(1.3%)*
+- **Missing critic score** is a large negative signal overall *(-23.3%)*, but small in `JP` *(-1.8%)*
+- Effect of **Year** is practically negligible *(-0.1%)* and confounded with time-on-market. Older games have had more time to accumulate lifetime sales, which *may* slightly inflate their totals
+- For **Game Genre**, in `JP`, RPG dominates, almost every other genre sells less. In `NA` and `PAL`, Shooter, Sports, and Racing sell more than RPG
+- For **Platform**, Sony Home is the strongest platform overall. Microsoft Home is statistically equal to Sony Home in `NA`, while Nintendo Handheld/Hybrid is equal to Sony Home in `JP`. PC/Mac is undercounted by VGChartz and should not be interpreted as weak
 
 ## Limitations
+- Available data from 2000 to 2020 only
 - Results are associations, not causal effects
 - VGChartz undercounts digital, PC, mobile, and indie sales
 - IP strength and marketing budgets are not in the data
 - Regional samples differ due to data availability
-- Model explains ~14.2–25% of variation in log sales, the rest is unobserved
+- Model explains 14.2% to 25.0% of variation in log sales (R<sup>2</sup> = 0.142 in `JP`, R<sup>2</sup> = 0.250 in `OVR`), the rest is unobserved
 
 ## Requirements
 - Python 3.9+
