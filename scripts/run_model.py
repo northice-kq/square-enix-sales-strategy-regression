@@ -23,7 +23,7 @@ def main(region_choice, region_col, file_choice, output_prefix):
         "d_pcmac", "d_mshome", "d_sonyhandheld",
     ]
 
-    region_drops = {
+    region_drops = { # note that the count is hardcoded as it has been counted by .csv.
         "NA": {
             "columns": ["d_sega", "d_visualnovel"],
             "counts": {"d_sega": 2, "d_visualnovel": 14}
