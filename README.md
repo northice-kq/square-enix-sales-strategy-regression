@@ -23,16 +23,58 @@ The trimmed dataset has cut top 1% and bottom 1% data by `total_sales`.
 
 ## Methodology
 
-### Cleaning and preparation
-- Filtered to 2000–2020.
-- Removed aggregate platforms (`Series`, `All`) and digital storefronts (`PSN`, `XBL`, `VC`, `WW`).
-- Grouped platforms into strategic categories: *Sony Home*, *Microsoft Home*, *Nintendo Home*, *Nintendo Handheld/Hybrid*, *Sony Handheld*, *PC/Mac*, *Sega*.
-- Collapsed rare genres into `Other`.
-- Created `critic_clean` (median-filled for missing scores) and `critic_missing` flag.
-- Centered critic score at 7.3 and year at 2010.
-- Log-transformed sales using `log1p` to handle skew and zero values.
+### Research design and rationale
+
+This project uses a pooled cross-sectional regression with time controls. 
+Each observation is a game-platform release, not a time-series unit. 
+Our goal is to estimate how critic score, release year, genre, and platform category relate to sales, and to compare those relationships across regions.
+Therefore, we used Ordinary Least Squares (OLS) regression in order to estimate conditional mean effects. 
+It is transparent, well-understood, and allows hypothesis testing. With 15,842 observations and 24 predictors, it is well-powered for the project.
+
+#### Why not time series?
+Time-series models (ARIMA, VAR) require repeated observations of the same unit over regular intervals.
+Aggregating to yearly totals would reduce the sample to 21 observations and discard all game-level variation. 
+It would also answer market trend rather than which genre on which platform in which region.
+Additionally, the data does not include 2021–2026. This limits how well the findings reflect the current market.
+
+#### Why not machine learning?
+The client needs interpretable coefficients, direction of effects, and statistical significance. 
+Random forests and gradient boosting can predict well but DO NOT provide coefficients, confidence intervals, or p-values. 
+For a strategy report, explanation matters more than prediction.
+Our aim is to observe the association between genre, platform and market value, not prediction.
+
+#### Why avoid ANOVA even though there is an abundance of categorical variables?
+ANOVA (Analysis of Variance) would in fact give identical F-tests and equivalent conclusions *if the model contained only categorical predictors*. 
+However, `critic score` and release `year` are *continuous*. 
+ANOVA alone cannot handle continuous predictors without binning. ANCOVA would be equivalent to regression. 
+OLS is therefore the more general and interpretable choice.
+
+ANOVA also only tells whether group means differ, while we aim to have an interpretable effect relative to a baseline.
+Regression with dummy variables lets us set *Role-Playing* and *Sony Home* as references. 
+As such, we can do comparisons across regions, platforms and genre.
+
+### Data preparation
+- **Filtered to 2000–2020**: The industry changed substantially before 2000 (pre-digital, different platform landscape)
+- **Removed aggregate platforms (`Series`, `All`) and digital storefronts (`PSN`, `XBL`, `VC`, `WW`)**:  These are not hardware platforms. Including them would distort platform comparisons
+- **Grouped platforms into strategic categories**: Raw console codes (PS, PS2, PS3, PS4, PSP, etc.) create too many dummy variables, grouping reduces cardinality while preserving distinctions that matter for decisions
+- **Collapsed rare genres into `Other`**: Genres with fewer than 30 observations produce unstable coefficients
+- **Drop categories with fewer than 30 observations in a region**: Same as above
+- **Created `critic_clean` (median-filled for missing scores) and `critic_missing` flag**: Missing `critic_score` is more common for smaller, older, or regional titles. The flag lets the model estimate the separate effect of having no score
+- **Centered critic score at 7.3 and year at 2010**: Reduces collinearity and sets the baseline
+- **Log-transformed sales using `log1p`** Handles skew by compressing the scale and handles zero values
 
 ### Model specification
+
+The estimated model is as follows:
+```
+log_region_sales = β0
+                 + β1 critic_c
+                 + β2 critic_missing
+                 + β3 year_c
+                 + Σ γ genre
+                 + Σ δ platform
+                 + ε error
+```
 - **Dependent variable (y)**: `log_region_sales` for overall or regional sales.
 - **Independent variables (x)**:
   - Quantitative: `critic_c` centred at 7.3 (median), `critic_missing`, `year_c` (centred at 2010)
@@ -43,6 +85,22 @@ The trimmed dataset has cut top 1% and bottom 1% data by `total_sales`.
 - **Regional models**: Separate regressions for `NA`, `JP`, `PAL`, and `Other`. Categories with fewer than 30 observations in a region were dropped to avoid unstable estimates.  
 
 Therefore, the baseline of this model is a *Role-Playing Game* on *Sony Home*, released in year 2010, with a critic score of 7.3.
+
+### Estimation
+
+**OLS** with **HC3** robust standard errors. 
+Sales variance differs across games.
+Default OLS errors assume constant variance and would be too small, making p-values overly optimistic. 
+HC3 corrects the standard errors without changing the coefficients, and is the most conservative of the common heteroscedasticity-consistent estimators.
+
+### Diagnostic checks
+| Diagnostic | Result                                                         | Interpretation                                                                                                                                |
+|---|----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| **Variance Inflation Factor (VIF)** | All VIFs below 5. Highest is 3.2.                              | - No problematic multicollinearity  <br/>- Coefficients are stable and standard errors are not inflated                                       |
+| **Condition number** | All models below 110                                           | Confirms the absence of severe multicollinearity                                                                                              |
+| **Residual diagnostics** | HC3 addresses heteroscedasticity, n = 15,842 overall           | Large sample supports the Central Limit Theorem for inference                                                                                 |
+| **R²** | 14.2% to 25.0% of variation in log sales, depending on region. | - Normal for sales data <br/>- Remaining variation is driven by unobserved factors such as marketing budget, IP strength, and platform deals. |
+
 
 ## Why Sony Home and Role-Playing are the reference dummy categories
 In a regression with dummy variables, one category from each group must be dropped to avoid perfect collinearity (the dummy variable trap). 
