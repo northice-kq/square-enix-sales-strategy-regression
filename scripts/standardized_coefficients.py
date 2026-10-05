@@ -92,6 +92,11 @@ def build_table(region_choice):
     table = pd.DataFrame(rows)[
         ["Variable", "B", "SE_B", "Beta", "SE_Beta", "t", "p"]
     ]
+
+    table[["B", "SE_B", "Beta", "SE_Beta", "t"]] = table[
+        ["B", "SE_B", "Beta", "SE_Beta", "t"]
+    ].round(4)
+
     return table
 
 all_tables = {}
