@@ -10,17 +10,25 @@ def main(region_choice, region_col, file_choice, output_prefix):
     print("Rows loaded:", len(df))
     print("Columns:", list(df.columns))
 
+    df["publisherClass"] = df["publisherClass"].fillna("Unknown")
+
+    df["d_aa"] = (df["publisherClass"] == "AA").astype(int)
+    df["d_indie"] = (df["publisherClass"] == "Indie").astype(int)
+    df["d_unknown"] = (df["publisherClass"] == "Unknown").astype(int)
+    # d_aaa is not created as ref.
+
     df["log_region_sales"] = np.log1p(df[region_col])
     y_col = "log_region_sales"
 
     x_cols = [
-        "critic_c", "critic_missing","year_c",
+        "critic_c", "critic_missing", "year_c",
         "d_action", "d_sports", "d_misc", "d_adventure", "d_shooter",
         "d_racing", "d_simulation", "d_platform", "d_fighting",
         "d_strategy", "d_puzzle", "d_actionadventure", "d_visualnovel",
         "d_music", "d_other",
         "d_sega", "d_nintendohandheld", "d_nintendohome",
         "d_pcmac", "d_mshome", "d_sonyhandheld",
+        "d_aa", "d_indie", "d_unknown"
     ]
 
     region_drops = { # note that the count is hardcoded as it has been counted by .csv.
@@ -131,7 +139,7 @@ def main(region_choice, region_col, file_choice, output_prefix):
           .sort_values("resid").head(10).to_string(index=False))
 
 
-file_choice = "../data/VGCHARTZ_DATA_v1.csv"
+file_choice = "../data/VGCHARTZ_DATA_v1.1.csv"
 output_prefix = "../output/coefficients/se_coefficients"
 region_map = {"NA": "na_sales","JP": "jp_sales","PAL": "pal_sales","OTHER": "other_sales", "OVR": "total_sales"}
 
