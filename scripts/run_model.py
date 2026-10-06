@@ -2,8 +2,21 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from pathlib import Path
 
-def main(region_choice, region_col, file_choice, output_prefix):
+SCRIPT_DIR = Path(__file__).resolve().parent
+BASE_DIR = SCRIPT_DIR.parent
+
+DATA_FILE = BASE_DIR / "data" / "VGCHARTZ_DATA_v1.csv"
+OUTPUT_DIR = BASE_DIR / "output"
+VIF_DIR = OUTPUT_DIR / "vif"
+COEF_DIR = OUTPUT_DIR / "coefficients"
+
+# ensure output directories exist
+VIF_DIR.mkdir(parents=True, exist_ok=True)
+COEF_DIR.mkdir(parents=True, exist_ok=True)
+
+def main(region_choice, region_col, file_choice, output_prefix, vif_dir):
     print(f"Selected region: {region_choice} ({region_col})")
 
     df = pd.read_csv(file_choice, encoding="utf-8-sig")
@@ -86,9 +99,9 @@ def main(region_choice, region_col, file_choice, output_prefix):
     print(vif_data.to_string(index=False))
 
     if region_choice == "OVR":
-        vif_data.to_csv("../output/vif/vif_overall.csv", index=False)
+        vif_data.to_csv(vif_dir / "vif_overall.csv", index=False)
     else:
-        vif_data.to_csv(f"../output/vif/vif_{region_choice}.csv", index=False)
+        vif_data.to_csv(vif_dir / f"vif_{region_choice}.csv", index=False)
 
     model = sm.OLS(y, X).fit(cov_type="HC3")
 
@@ -107,9 +120,9 @@ def main(region_choice, region_col, file_choice, output_prefix):
     })
 
     if region_choice == "OVR":
-        output_file = f"{output_prefix}.csv"
+        output_file = output_prefix.with_suffix(".csv")
     else:
-        output_file = f"{output_prefix}_{region_choice}.csv"
+        output_file = output_prefix.parent / f"{output_prefix.name}_{region_choice}.csv"
     coef.to_csv(output_file, index=False)
     print(f"\nSaved {output_file}")
 
@@ -130,23 +143,23 @@ def main(region_choice, region_col, file_choice, output_prefix):
     print(df_resid[["title", "console", "year", "resid"]]
           .sort_values("resid").head(10).to_string(index=False))
 
+if __name__ == "__main__":
+    file_choice = DATA_FILE
+    output_prefix = COEF_DIR / "se_coefficients"
+    region_map = {"NA": "na_sales","JP": "jp_sales","PAL": "pal_sales","OTHER": "other_sales", "OVR": "total_sales"}
 
-file_choice = "../data/VGCHARTZ_DATA_v1.csv"
-output_prefix = "../output/coefficients/se_coefficients"
-region_map = {"NA": "na_sales","JP": "jp_sales","PAL": "pal_sales","OTHER": "other_sales", "OVR": "total_sales"}
+    while True:
+        region_choice = input("Choose region (NA / JP / PAL / OTHER), all four regions (ALLREG), or overall stats (OVR): ").upper()
+        if region_choice == "ALLREG":
+            for r in ["NA", "JP", "PAL", "OTHER"]:
+                region_col = region_map[r]
+                main(r, region_col, file_choice, output_prefix, VIF_DIR)
+                print("\n" + ("=" * 70) + "\n")
+            break
+        if region_choice in region_map:
+            region_col = region_map[region_choice]
+            main(region_choice, region_col, file_choice, output_prefix, VIF_DIR)
+            break
 
-while True:
-    region_choice = input("Choose region (NA / JP / PAL / OTHER), all four regions (ALLREG), or overall stats (OVR): ").upper()
-    if region_choice == "ALLREG":
-        for r in ["NA", "JP", "PAL", "OTHER"]:
-            region_col = region_map[r]
-            main(r, region_col, file_choice, output_prefix)
-            print("\n" + ("=" * 70) + "\n")
-        break
-    if region_choice in region_map:
-        region_col = region_map[region_choice]
-        main(region_choice, region_col, file_choice, output_prefix)
-        break
-
-    else:
-        print("Valid options: NA, JP, PAL, OTHER, OVR, ALLREG")
+        else:
+            print("Valid options: NA, JP, PAL, OTHER, OVR, ALLREG")
