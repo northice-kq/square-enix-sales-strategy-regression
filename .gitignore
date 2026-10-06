@@ -15,3 +15,12 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# vif
+output/vif/*
+
+# coefficients
+output/coefficients/*
+
+!output/coefficients/standardized
+!output/coefficients/comparison_table.csv
