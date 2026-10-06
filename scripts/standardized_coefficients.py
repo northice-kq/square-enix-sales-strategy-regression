@@ -5,7 +5,7 @@ import os
 
 os.makedirs("../output/coefficients/standardized", exist_ok=True)
 
-file_choice = "../data/VGCHARTZ_DATA_v1.csv"
+file_choice = "../data/VGCHARTZ_DATA_v1.1.csv"
 output_prefix = "../output/coefficients/standardized/standardized"
 
 region_map = {
@@ -32,6 +32,7 @@ x_cols_all = [
     "d_music", "d_other",
     "d_sega", "d_nintendohandheld", "d_nintendohome",
     "d_pcmac", "d_mshome", "d_sonyhandheld",
+    "d_aa", "d_indie", "d_unknown"
 ]
 
 # build standardised table
@@ -40,6 +41,13 @@ def build_table(region_choice):
     df = pd.read_csv(file_choice, encoding="utf-8-sig")
 
     region_col = region_map[region_choice]
+
+    df["publisherClass"] = df["publisherClass"].fillna("Unknown")
+    df["d_aa"] = (df["publisherClass"] == "AA").astype(int)
+    df["d_indie"] = (df["publisherClass"] == "Indie").astype(int)
+    df["d_unknown"] = (df["publisherClass"] == "Unknown").astype(int)
+    # AAA is reference, no column needed
+
     df["log_region_sales"] = np.log1p(df[region_col])
     y_col = "log_region_sales"
 
