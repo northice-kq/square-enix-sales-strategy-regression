@@ -3,13 +3,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.lines import Line2D
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+BASE_DIR = SCRIPT_DIR.parent
+OUTPUT_DIR = BASE_DIR / "output"
+COEF_DIR = OUTPUT_DIR / "coefficients"
+FIG_DIR = OUTPUT_DIR / "figures"
+
+# ensure these folders exist
+COEF_DIR.mkdir(parents=True, exist_ok=True)
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 files = {
-    "OVR": "../output/coefficients/se_coefficients.csv",
-    "NA": "../output/coefficients/se_coefficients_NA.csv",
-    "JP": "../output/coefficients/se_coefficients_JP.csv",
-    "PAL": "../output/coefficients/se_coefficients_PAL.csv",
-    "OTHER": "../output/coefficients/se_coefficients_OTHER.csv",
+    "OVR": COEF_DIR / "se_coefficients.csv",
+    "NA": COEF_DIR / "se_coefficients_NA.csv",
+    "JP": COEF_DIR / "se_coefficients_JP.csv",
+    "PAL": COEF_DIR / "se_coefficients_PAL.csv",
+    "OTHER": COEF_DIR / "se_coefficients_OTHER.csv",
 }
 
 frames = {}
@@ -31,8 +42,8 @@ pct_table = np.exp(coef_table) - 1 # Add percent
 pct_table = pct_table * 100
 
 combined = coef_table.round(4).astype(str) + " (" + pct_table.round(2).astype(str) + "%)"
-combined.to_csv("../output/coefficients/comparison_table.csv")
-combined.to_excel("../output/coefficients/comparison_table.xlsx")
+combined.to_csv(COEF_DIR / "comparison_table.csv")
+combined.to_excel(COEF_DIR / "comparison_table.xlsx")
 
 print("Comparison table saved.")
 
@@ -44,7 +55,7 @@ p_table = pd.DataFrame({
 }).drop("const", errors="ignore")
 
 p_table = p_table.round(4)
-p_table.to_csv("../output/coefficients/pvalue_table.csv")
+p_table.to_csv(COEF_DIR / "pvalue_table.csv")
 
 print("P-value table saved.")
 
@@ -64,7 +75,7 @@ plt.axhline(0, color="black", linewidth=0.8)
 plt.xticks(rotation=90)
 plt.legend(title="Region", loc="upper right")
 plt.tight_layout()
-plt.savefig("../output/figures/coefficient_comparison.png", dpi=150, bbox_inches="tight")
+plt.savefig(FIG_DIR / "coefficient_comparison.png", dpi=150, bbox_inches="tight")
 plt.close()
 
 print("Coefficient comparison chart saved.")
@@ -106,7 +117,7 @@ fig.text(# left-aligned footnote
     ha="left", va="bottom", fontsize=9
 )
 
-plt.savefig("../output/figures/heatmap_pct_effect.png", dpi=150, bbox_inches="tight")
+plt.savefig(FIG_DIR / "heatmap_pct_effect.png", dpi=150, bbox_inches="tight")
 plt.close()
 
 print("Heatmap saved.")
@@ -174,7 +185,7 @@ legend_elements = [
 plt.legend(handles=legend_elements, loc="upper right", framealpha=0.9)
 
 plt.tight_layout()
-plt.savefig("../output/figures/forest_OVR.png", dpi=150, bbox_inches="tight")
+plt.savefig(FIG_DIR / "forest_OVR.png",dpi=150, bbox_inches="tight")
 plt.close()
 print("Overall Forest plot saved.")
 
@@ -220,7 +231,7 @@ for region in ["NA", "JP", "PAL", "OTHER"]: #for region, same theory
     plt.legend(handles=legend_elements, loc="upper right", framealpha=0.9)
 
     plt.tight_layout()
-    plt.savefig(f"../output/figures/forest_{region}.png", dpi=150, bbox_inches="tight")
+    plt.savefig(FIG_DIR / f"forest_{region}.png", dpi=150, bbox_inches="tight")
     plt.close()
 
     print(f"Forest plot saved for {region}.")
@@ -253,7 +264,7 @@ fig.text(
 
 fig.subplots_adjust(bottom=0.13)
 
-plt.savefig("../output/figures/genre_comparison.png", dpi=150, bbox_inches="tight")
+plt.savefig(FIG_DIR / "genre_comparison.png", dpi=150, bbox_inches="tight")
 plt.close()
 
 print("Genre chart saved.")
@@ -274,7 +285,7 @@ plt.ylabel("Platform Category")
 plt.axvline(0, color="black", linewidth=0.8)
 plt.legend(title="Region")
 plt.tight_layout()
-plt.savefig("../output/figures/platform_comparison.png", dpi=150, bbox_inches="tight")
+plt.savefig(FIG_DIR / "platform_comparison.png", dpi=150, bbox_inches="tight")
 plt.close()
 
 print("Platform chart saved.")
