@@ -14,6 +14,72 @@ INPUT_PATH = DATA_DIR / "publisher_mapping.csv"
 OUT_LOOKUP = DATA_DIR / "publisher_to_class.csv"
 OUT_SUMMARY = DATA_DIR / "publisher_mapping_summary.csv"
 
+# publisher -> class lookup (resolve conflicts deterministically)
+priority = {"AAA": 0, "AA": 1, "Indie": 2, "Hobbyist": 3}
+
+MANUAL_OVERRIDES: dict[str, str] = {
+
+    "square enix": "AAA",
+    "activision": "AAA",
+    "activision blizzard": "AAA",
+    "electronic arts": "AAA",
+    "ea": "AAA",
+    "ea games": "AAA",
+    "take-two interactive": "AAA",
+    "take two interactive": "AAA",
+    "rockstar games": "AAA",
+    "2k": "AAA",
+    "2k games": "AAA",
+    "ubisoft": "AAA",
+    "nintendo": "AAA",
+    "sony interactive entertainment": "AAA",
+    "sony computer entertainment": "AAA",
+    "playstation studios": "AAA",
+    "microsoft game studios": "AAA",
+    "xbox game studios": "AAA",
+    "microsoft": "AAA",
+    "capcom": "AAA",
+    "bandai namco": "AAA",
+    "bandai namco entertainment": "AAA",
+    "sega": "AAA",
+    "konami": "AAA",
+    "warner bros. interactive entertainment": "AAA",
+    "warner bros interactive": "AAA",
+    "wb games": "AAA",
+    "bethesda softworks": "AAA",
+    "bethesda": "AAA",
+    "valve": "AAA",
+    "valve corporation": "AAA",
+    "epic games": "AAA",
+    "cd projekt": "AAA",
+    "cd projekt red": "AAA",
+    "fromsoftware": "AAA",
+    "from software": "AAA",
+    "koei tecmo": "AAA",
+    "koei": "AAA",
+    "tecmo": "AAA",
+    "thq nordic": "AAA",
+    "deep silver": "AAA",
+    "505 games": "AAA",
+    "focus home interactive": "AAA",
+    "focus entertainment": "AAA",
+    "paradox interactive": "AAA",
+    "annapurna interactive": "AAA",
+    "devolver digital": "AAA",
+    "team17": "AAA",
+    "warner bros.": "AAA",
+    "rockstar": "AAA",
+    "bungie": "AAA",
+    "blizzard entertainment": "AAA",
+    "blizzard": "AAA",
+    "riot games": "AAA",
+    "nexon": "AAA",
+    "krafton": "AAA",
+    "tencent": "AAA",
+    "netease": "AAA",
+}
+
+
 def parse_publishers_cell(value) -> list[str]:
     """Turn "['Valve', 'EA']" (string) into ['Valve', 'EA'] (list)."""
     if value is None:
@@ -75,6 +141,9 @@ def read_mapping(path: Path) -> pd.DataFrame:
 
     return pd.DataFrame(records)
 
+def normalise(s: str) -> str:
+    return " ".join(str(s).strip().lower().split())
+
 def main() -> int:
     if not INPUT_PATH.exists():
         print(f"[ERROR] Input file not found: {INPUT_PATH}", file=sys.stderr)
@@ -103,27 +172,38 @@ def main() -> int:
 
     # detect publishers assigned to more than one class
     classes_for: dict[str, set[str]] = defaultdict(set)
+    display_name: dict[str, str] = {}
+
     for _, r in long_df.iterrows():
-        classes_for[r["publisher"]].add(r["publisherClass"])
+        key = normalise(r["publisher"])
+        classes_for[key].add(r["publisherClass"])
+        display_name.setdefault(key, r["publisher"])
 
     conflicts = {p: sorted(c) for p, c in classes_for.items() if len(c) > 1}
     if conflicts:
         print(f"[WARN] {len(conflicts)} publisher(s) appear in multiple classes:")
-        for p, cs in list(conflicts.items())[:15]:
+        for p, cs in list(conflicts.items()):
             print(f"        {p} -> {cs}")
-        if len(conflicts) > 15:
-            print(f"        ... and {len(conflicts) - 15} more")
 
-    # publisher -> class lookup (resolve conflicts deterministically)
-    priority = {"AAA": 0, "AA": 1, "Indie": 2, "Hobbyist": 3}
+    # apply manual overrides first
+    for key in list(classes_for.keys()):
+        if key in MANUAL_OVERRIDES:
+            classes_for[key] = {MANUAL_OVERRIDES[key]}
+
+    # build lookup
     lookup_rows = []
-    for p, cs in classes_for.items():
-        chosen = sorted(cs, key=lambda c: (priority.get(c, 99), c))[0]
-        lookup_rows.append({"publisher": p, "publisherClass": chosen})
+    for key, cs in classes_for.items():
+        chosen = min(cs, key=lambda c: priority.get(c, 99))
+        lookup_rows.append({
+            "publisher": display_name.get(key, key),
+            "publisherClass": chosen,
+            "was_overridden": int(key in MANUAL_OVERRIDES),
+        })
+
     lookup_df = (
         pd.DataFrame(lookup_rows)
-          .sort_values("publisher")
-          .reset_index(drop=True)
+        .sort_values("publisher")
+        .reset_index(drop=True)
     )
 
     summary_df = (
