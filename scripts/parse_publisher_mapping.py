@@ -12,7 +12,6 @@ DATA_DIR = ROOT_DIR / "data"
 
 INPUT_PATH = DATA_DIR / "publisher_mapping.csv"
 OUT_LOOKUP = DATA_DIR / "publisher_to_class.csv"
-OUT_SUMMARY = DATA_DIR / "publisher_mapping_summary.csv"
 
 # publisher -> class lookup (resolve conflicts deterministically)
 priority = {"AAA": 0, "AA": 1, "Indie": 2, "Hobbyist": 3}
@@ -217,10 +216,8 @@ def main() -> int:
 
     # write outputs
     lookup_df.to_csv(OUT_LOOKUP, index=False, encoding="utf-8-sig")
-    summary_df.to_csv(OUT_SUMMARY, index=False, encoding="utf-8-sig")
 
     print(f"Wrote {OUT_LOOKUP}  ({len(lookup_df)} rows)")
-    print(f"Wrote {OUT_SUMMARY} ({len(summary_df)} rows)")
     print("\nSummary by class:")
     print(summary_df.to_string(index=False))
 
