@@ -79,6 +79,7 @@ var_order = [
     "d_music", "d_other",
     "d_sega", "d_nintendohandheld", "d_nintendohome",
     "d_pcmac", "d_mshome", "d_sonyhandheld",
+    "d_aa", "d_indie", "d_unknown",
 ]
 
 ordered_vars = [v for v in var_order if v in pct_table.index]
@@ -102,7 +103,7 @@ fig.subplots_adjust(bottom=0.14)
 
 fig.text(# left-aligned footnote
     0.02, 0.07,
-    "Baseline: Role-Playing Games on Sony Home, year 2010, critic score 7.3.\ncritic_c is centred at 7.3; year_c is centred at 2010. Values are percentages relative to that baseline.\nEmpty cells = variable dropped from that regional model because it had fewer than 30 observations in that region\n",
+    "Baseline: AAA-published Role-Playing Games on Sony Home, year 2010, critic score 7.3.\n\ncritic_c is centred at 7.3; year_c is centred at 2010. Values are percentages relative to that baseline.\nEmpty cells = variable dropped from that regional model because it had fewer than 30 observations in that region\n",
     ha="left", va="bottom", fontsize=9
 )
 
@@ -125,12 +126,16 @@ groups = {
         "d_sega", "d_nintendohandheld", "d_nintendohome",
         "d_pcmac", "d_mshome", "d_sonyhandheld",
     ],
+    "Publisher Class": [
+        "d_aa", "d_indie", "d_unknown",
+    ],
 }
 
 group_colors = {
     "Quantitative": "tab:blue",
     "Genre": "tab:green",
     "Platform Category": "tab:red",
+    "Publisher Class": "tab:orange",
 }
 
 ordered_labels = []
@@ -164,13 +169,15 @@ plt.xlabel("Coefficient (95% CI)")
 plt.title("Overall Model: Coefficients by Variable Type")
 
 legend_elements = [
-    Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Quantitative"],
-           markersize=10, label="Quantitative (critic, year)"),
-    Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Genre"],
-           markersize=10, label="Genre (vs Role-Playing)"),
-    Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Platform Category"],
-           markersize=10, label="Platform Category (vs Sony Home)"),
-]
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Quantitative"],
+               markersize=10, label="Quantitative (critic, year)"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Genre"],
+               markersize=10, label="Genre (vs Role-Playing)"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Platform Category"],
+               markersize=10, label="Platform Category (vs Sony Home)"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Publisher Class"],
+               markersize=10, label="Publisher Class (vs AAA)"),
+    ]
 plt.legend(handles=legend_elements, loc="upper right", framealpha=0.9)
 
 plt.tight_layout()
@@ -216,6 +223,8 @@ for region in ["NA", "JP", "PAL", "OTHER"]: #for region, same theory
                markersize=10, label="Genre (vs Role-Playing)"),
         Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Platform Category"],
                markersize=10, label="Platform Category (vs Sony Home)"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=group_colors["Publisher Class"],
+               markersize=10, label="Publisher Class (vs AAA)"),
     ]
     plt.legend(handles=legend_elements, loc="upper right", framealpha=0.9)
 
