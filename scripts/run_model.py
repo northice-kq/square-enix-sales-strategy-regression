@@ -132,16 +132,14 @@ def main(region_choice, region_col, file_choice, output_prefix, vif_dir):
     print("Residual min:", round(resid.min(), 4))
     print("Residual max:", round(resid.max(), 4))
 
-    # top 10 worst misses respectively
+    # top 20 worst misses respectively
     df_resid = df.loc[model_df.index].copy()
     df_resid["resid"] = resid
-    print("\nTop 10 under-predicted (model said low, actual high):")
-    print(df_resid[["title", "console", "year", "resid"]]
-          .sort_values("resid", ascending=False).head(10).to_string(index=False))
+    print("\nTop 20 under-predicted (model said low, actual high):")
+    print(df_resid[["title", "console", "year", "resid"]].sort_values("resid", ascending=False).head(20).to_string(index=False))
 
-    print("\nTop 10 over-predicted (model said high, actual low):")
-    print(df_resid[["title", "console", "year", "resid"]]
-          .sort_values("resid").head(10).to_string(index=False))
+    print("\nTop 20 over-predicted (model said high, actual low):")
+    print(df_resid[["title", "console", "year", "resid"]].sort_values("resid").head(20).to_string(index=False))
 
 if __name__ == "__main__":
     file_choice = DATA_FILE
