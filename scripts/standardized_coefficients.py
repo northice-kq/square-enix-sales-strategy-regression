@@ -112,11 +112,6 @@ for region_choice in ["OVR", "NA", "JP", "PAL", "OTHER"]:
     print(f"Building table for {region_choice}...")
     table = build_table(region_choice)
     all_tables[region_choice] = table
-
-    # Save individual
-    table.to_excel(
-        f"{output_prefix}_{region_choice}.xlsx", index=False
-    )
     table.to_csv(
         f"{output_prefix}_{region_choice}.csv", index=False
     )

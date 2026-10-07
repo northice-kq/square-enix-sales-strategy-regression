@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+import os
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 def main(region_choice, region_col, file_choice, output_prefix):
@@ -93,6 +94,7 @@ def main(region_choice, region_col, file_choice, output_prefix):
     print("\nVariance Inflation Factors:")
     print(vif_data.to_string(index=False))
 
+    os.makedirs("../output/vif", exist_ok=True)
     if region_choice == "OVR":
         vif_data.to_csv("../output/vif/vif_overall.csv", index=False)
     else:
@@ -127,16 +129,22 @@ def main(region_choice, region_col, file_choice, output_prefix):
     print("Residual min:", round(resid.min(), 4))
     print("Residual max:", round(resid.max(), 4))
 
-    # top 10 worst misses respectively
+    # top 20 worst misses respectively
     df_resid = df.loc[model_df.index].copy()
     df_resid["resid"] = resid
-    print("\nTop 10 under-predicted (model said low, actual high):")
-    print(df_resid[["title", "console", "year", "resid"]]
-          .sort_values("resid", ascending=False).head(10).to_string(index=False))
+    print("\nTop 20 under-predicted (model said low, actual high):")
+    print(df_resid[["title", "console", "year", "resid"]].sort_values("resid", ascending=False).head(20).to_string(index=False))
 
-    print("\nTop 10 over-predicted (model said high, actual low):")
-    print(df_resid[["title", "console", "year", "resid"]]
-          .sort_values("resid").head(10).to_string(index=False))
+    print("\nTop 20 over-predicted (model said high, actual low):")
+    print(df_resid[["title", "console", "year", "resid"]].sort_values("resid").head(20).to_string(index=False))
+
+    os.makedirs("../output/residuals", exist_ok=True)
+    if region_choice == "OVR":
+        resid_file = "../output/residuals/residuals.csv"
+    else:
+        resid_file = f"../output/residuals/residuals_{region_choice}.csv"
+    df_resid.to_csv(resid_file, index=False)
+    print(f"Saved {resid_file}")
 
 
 file_choice = "../data/VGCHARTZ_DATA_v1.1.csv"
