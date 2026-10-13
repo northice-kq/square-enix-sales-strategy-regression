@@ -132,11 +132,36 @@ def main(region_choice, region_col, file_choice, output_prefix):
     # top 20 worst misses respectively
     df_resid = df.loc[model_df.index].copy()
     df_resid["resid"] = resid
-    print("\nTop 20 under-predicted (model said low, actual high):")
+    print("\nTop 20 under-estimated (model said low, actual high):")
     print(df_resid[["title", "console", "year", "resid"]].sort_values("resid", ascending=False).head(20).to_string(index=False))
 
-    print("\nTop 20 over-predicted (model said high, actual low):")
+    print("\nTop 20 over-estimated (model said high, actual low):")
     print(df_resid[["title", "console", "year", "resid"]].sort_values("resid").head(20).to_string(index=False))
+
+    os.makedirs("../output/top_misses", exist_ok=True)
+    os.makedirs("../output/top_misses/underestimate", exist_ok=True)
+    os.makedirs("../output/top_misses/overestimate", exist_ok=True)
+
+    cols = ["title", "console", "year", "resid"]
+    under = df_resid[cols].sort_values("resid", ascending=False).head(20).reset_index(drop=True)
+    over = df_resid[cols].sort_values("resid").head(20).reset_index(drop=True)
+
+    under["rank"] = under.index + 1
+    over["rank"] = over.index + 1
+    under = under[["rank", "title", "console", "year", "resid"]]
+    over = over[["rank", "title", "console", "year", "resid"]]
+
+    if region_choice == "OVR":
+        under_file = "../output/top_misses/underestimate/top20_underestimate.csv"
+        over_file = "../output/top_misses/overestimate/top20_overestimate.csv"
+    else:
+        under_file = f"../output/top_misses/underestimate/top20_underestimate_{region_choice}.csv"
+        over_file = f"../output/top_misses/overestimate/top20_overestimate_{region_choice}.csv"
+
+    under.to_csv(under_file, index=False, encoding="utf-8-sig")
+    over.to_csv(over_file, index=False, encoding="utf-8-sig")
+    print(f"Saved {under_file}")
+    print(f"Saved {over_file}")
 
     os.makedirs("../output/residuals", exist_ok=True)
     if region_choice == "OVR":
