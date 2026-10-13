@@ -79,6 +79,7 @@ def build_table(region_choice):
                 "Variable": "Intercept",
                 "B": b,
                 "SE_B": se_b,
+                "pct_effect (%)": np.nan,
                 "Beta": np.nan,
                 "SE_Beta": np.nan,
                 "t": t,
@@ -87,23 +88,21 @@ def build_table(region_choice):
         else:
             beta = b * (sd_x[var] / sd_y)
             se_beta = se_b * (sd_x[var] / sd_y)
+            pct = (np.exp(b) - 1) * 100
             rows.append({
                 "Variable": var,
                 "B": b,
                 "SE_B": se_b,
+                "pct_effect (%)": pct,
                 "Beta": beta,
                 "SE_Beta": se_beta,
                 "t": t,
                 "p": p,
             })
 
-    table = pd.DataFrame(rows)[
-        ["Variable", "B", "SE_B", "Beta", "SE_Beta", "t", "p"]
-    ]
+    table = pd.DataFrame(rows)[["Variable", "B", "SE_B", "pct_effect (%)", "Beta", "SE_Beta", "t", "p"]]
 
-    table[["B", "SE_B", "Beta", "SE_Beta", "t"]] = table[
-        ["B", "SE_B", "Beta", "SE_Beta", "t"]
-    ].round(4)
+    table[["B", "SE_B", "pct_effect (%)", "Beta", "SE_Beta", "t"]] = table[["B", "SE_B", "pct_effect (%)", "Beta", "SE_Beta", "t"]].round(4)
 
     return table
 
