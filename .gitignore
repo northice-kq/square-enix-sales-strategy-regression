@@ -21,3 +21,7 @@ output/coefficients/*
 output/vif/
 output/residuals/
 !output/coefficients/standardized/
+
+# reproducable data
+data/publisher_to_class.csv
+data/unmatched_publishers.csv
