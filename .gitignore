@@ -18,9 +18,10 @@ Thumbs.db
 
 # output
 output/coefficients/*
-output/vif/
-output/residuals/
+output/vif/*
+output/residuals/*
 !output/coefficients/standardized/
+!output/coefficients/comparison_table.csv
 
 # reproducable data
 data/publisher_to_class.csv

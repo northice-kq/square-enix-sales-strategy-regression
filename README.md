@@ -146,7 +146,7 @@ From the `scripts/` folder:
 3. **Run the model**  
 From the `scripts/` folder:
     ```bash
-   python run_model.py
+   py scripts/run_model.py
     ```
    Choose `OVR` for overall sales, `ALLREG` for all four region sales respectively, or region code (`JP`, `NA`, `PAL`, `OTHER`)for a specific region.    
   
@@ -154,7 +154,7 @@ From the `scripts/` folder:
 4. **Generate tables and figures**  
 From the `scripts/` folder:
     ```bash
-   python table_and_graph_making.py
+   py scripts/table_and_graph_making.py
     ```
     This reads the coefficient CSVs created by `run_model.py` and produces comparison tables and plots.
 

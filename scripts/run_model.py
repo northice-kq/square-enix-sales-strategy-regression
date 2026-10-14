@@ -1,8 +1,24 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-import os
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+BASE_DIR = SCRIPT_DIR.parent
+
+DATA_FILE = BASE_DIR / "data" / "VGCHARTZ_DATA_v1.1.csv"
+OUTPUT_DIR = BASE_DIR / "output"
+VIF_DIR = OUTPUT_DIR / "vif"
+COEF_DIR = OUTPUT_DIR / "coefficients"
+TOP_MISSES_DIR = OUTPUT_DIR / "top_misses"
+UNDER_DIR = TOP_MISSES_DIR / "underestimate"
+OVER_DIR = TOP_MISSES_DIR / "overestimate"
+RESID_DIR = OUTPUT_DIR / "residuals"
+
+# ensure output directories exist
+for d in [VIF_DIR, COEF_DIR, TOP_MISSES_DIR, UNDER_DIR, OVER_DIR, RESID_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
 
 def main(region_choice, region_col, file_choice, output_prefix):
     print(f"Selected region: {region_choice} ({region_col})")
@@ -94,11 +110,10 @@ def main(region_choice, region_col, file_choice, output_prefix):
     print("\nVariance Inflation Factors:")
     print(vif_data.to_string(index=False))
 
-    os.makedirs("../output/vif", exist_ok=True)
     if region_choice == "OVR":
-        vif_data.to_csv("../output/vif/vif_overall.csv", index=False)
+        vif_data.to_csv(VIF_DIR / "vif_overall.csv", index=False)
     else:
-        vif_data.to_csv(f"../output/vif/vif_{region_choice}.csv", index=False)
+        vif_data.to_csv(VIF_DIR / f"vif_{region_choice}.csv", index=False)
 
     model = sm.OLS(y, X).fit(cov_type="HC3")
 
@@ -117,14 +132,13 @@ def main(region_choice, region_col, file_choice, output_prefix):
     })
 
     if region_choice == "OVR":
-        output_file = f"{output_prefix}.csv"
+        output_file = output_prefix.with_suffix(".csv")
     else:
-        output_file = f"{output_prefix}_{region_choice}.csv"
+        output_file = output_prefix.parent / f"{output_prefix.name}_{region_choice}.csv"
     coef.to_csv(output_file, index=False)
     print(f"\nSaved {output_file}")
 
     resid = model.resid
-    fitted = model.fittedvalues
     print("Residual std:", round(resid.std(), 4))
     print("Residual min:", round(resid.min(), 4))
     print("Residual max:", round(resid.max(), 4))
@@ -138,10 +152,6 @@ def main(region_choice, region_col, file_choice, output_prefix):
     print("\nTop 20 over-estimated (model said high, actual low):")
     print(df_resid[["title", "console", "year", "resid"]].sort_values("resid").head(20).to_string(index=False))
 
-    os.makedirs("../output/top_misses", exist_ok=True)
-    os.makedirs("../output/top_misses/underestimate", exist_ok=True)
-    os.makedirs("../output/top_misses/overestimate", exist_ok=True)
-
     cols = ["title", "console", "year", "resid"]
     under = df_resid[cols].sort_values("resid", ascending=False).head(20).reset_index(drop=True)
     over = df_resid[cols].sort_values("resid").head(20).reset_index(drop=True)
@@ -152,42 +162,43 @@ def main(region_choice, region_col, file_choice, output_prefix):
     over = over[["rank", "title", "console", "year", "resid"]]
 
     if region_choice == "OVR":
-        under_file = "../output/top_misses/underestimate/top20_underestimate.csv"
-        over_file = "../output/top_misses/overestimate/top20_overestimate.csv"
+        under_file = UNDER_DIR / "top20_underestimate.csv"
+        over_file = OVER_DIR / "top20_overestimate.csv"
     else:
-        under_file = f"../output/top_misses/underestimate/top20_underestimate_{region_choice}.csv"
-        over_file = f"../output/top_misses/overestimate/top20_overestimate_{region_choice}.csv"
+        under_file = UNDER_DIR / f"top20_underestimate_{region_choice}.csv"
+        over_file = OVER_DIR / f"top20_overestimate_{region_choice}.csv"
 
     under.to_csv(under_file, index=False, encoding="utf-8-sig")
     over.to_csv(over_file, index=False, encoding="utf-8-sig")
     print(f"Saved {under_file}")
     print(f"Saved {over_file}")
 
-    os.makedirs("../output/residuals", exist_ok=True)
     if region_choice == "OVR":
-        resid_file = "../output/residuals/residuals.csv"
+        resid_file = RESID_DIR / "residuals.csv"
     else:
-        resid_file = f"../output/residuals/residuals_{region_choice}.csv"
+        resid_file = RESID_DIR / f"residuals_{region_choice}.csv"
+
     df_resid.to_csv(resid_file, index=False)
     print(f"Saved {resid_file}")
 
 
-file_choice = "../data/VGCHARTZ_DATA_v1.1.csv"
-output_prefix = "../output/coefficients/se_coefficients"
-region_map = {"NA": "na_sales","JP": "jp_sales","PAL": "pal_sales","OTHER": "other_sales", "OVR": "total_sales"}
+if __name__ == "__main__":
+    file_choice = DATA_FILE
+    output_prefix = COEF_DIR / "se_coefficients"
+    region_map = {"NA": "na_sales","JP": "jp_sales","PAL": "pal_sales","OTHER": "other_sales", "OVR": "total_sales"}
 
-while True:
-    region_choice = input("Choose region (NA / JP / PAL / OTHER), all four regions (ALLREG), or overall stats (OVR): ").upper()
-    if region_choice == "ALLREG":
-        for r in ["NA", "JP", "PAL", "OTHER"]:
-            region_col = region_map[r]
-            main(r, region_col, file_choice, output_prefix)
-            print("\n" + ("=" * 70) + "\n")
-        break
-    if region_choice in region_map:
-        region_col = region_map[region_choice]
-        main(region_choice, region_col, file_choice, output_prefix)
-        break
+    while True:
+        region_choice = input("Choose region (NA / JP / PAL / OTHER), all four regions (ALLREG), or overall stats (OVR): ").upper()
+        if region_choice == "ALLREG":
+            for r in ["NA", "JP", "PAL", "OTHER"]:
+                region_col = region_map[r]
+                main(r, region_col, file_choice, output_prefix)
+                print("\n" + ("=" * 70) + "\n")
+            break
+        if region_choice in region_map:
+            region_col = region_map[region_choice]
+            main(region_choice, region_col, file_choice, output_prefix)
+            break
 
-    else:
-        print("Valid options: NA, JP, PAL, OTHER, OVR, ALLREG")
+        else:
+            print("Valid options: NA, JP, PAL, OTHER, OVR, ALLREG")
