@@ -5,7 +5,7 @@ import os
 
 os.makedirs("../output/coefficients/standardized", exist_ok=True)
 
-file_choice = "../data/VGCHARTZ_DATA_v1.csv"
+file_choice = "../data/VGCHARTZ_DATA_v1.1.csv"
 output_prefix = "../output/coefficients/standardized/standardized"
 
 region_map = {
@@ -32,6 +32,7 @@ x_cols_all = [
     "d_music", "d_other",
     "d_sega", "d_nintendohandheld", "d_nintendohome",
     "d_pcmac", "d_mshome", "d_sonyhandheld",
+    "d_aa", "d_indie", "d_unknown"
 ]
 
 # build standardised table
@@ -40,6 +41,13 @@ def build_table(region_choice):
     df = pd.read_csv(file_choice, encoding="utf-8-sig")
 
     region_col = region_map[region_choice]
+
+    df["publisherClass"] = df["publisherClass"].fillna("Unknown")
+    df["d_aa"] = (df["publisherClass"] == "AA").astype(int)
+    df["d_indie"] = (df["publisherClass"] == "Indie").astype(int)
+    df["d_unknown"] = (df["publisherClass"] == "Unknown").astype(int)
+    # AAA is reference, no column needed
+
     df["log_region_sales"] = np.log1p(df[region_col])
     y_col = "log_region_sales"
 
@@ -71,6 +79,7 @@ def build_table(region_choice):
                 "Variable": "Intercept",
                 "B": b,
                 "SE_B": se_b,
+                "pct_effect (%)": np.nan,
                 "Beta": np.nan,
                 "SE_Beta": np.nan,
                 "t": t,
@@ -79,23 +88,21 @@ def build_table(region_choice):
         else:
             beta = b * (sd_x[var] / sd_y)
             se_beta = se_b * (sd_x[var] / sd_y)
+            pct = (np.exp(b) - 1) * 100
             rows.append({
                 "Variable": var,
                 "B": b,
                 "SE_B": se_b,
+                "pct_effect (%)": pct,
                 "Beta": beta,
                 "SE_Beta": se_beta,
                 "t": t,
                 "p": p,
             })
 
-    table = pd.DataFrame(rows)[
-        ["Variable", "B", "SE_B", "Beta", "SE_Beta", "t", "p"]
-    ]
+    table = pd.DataFrame(rows)[["Variable", "B", "SE_B", "pct_effect (%)", "Beta", "SE_Beta", "t", "p"]]
 
-    table[["B", "SE_B", "Beta", "SE_Beta", "t"]] = table[
-        ["B", "SE_B", "Beta", "SE_Beta", "t"]
-    ].round(4)
+    table[["B", "SE_B", "pct_effect (%)", "Beta", "SE_Beta", "t"]] = table[["B", "SE_B", "pct_effect (%)", "Beta", "SE_Beta", "t"]].round(4)
 
     return table
 
@@ -104,11 +111,6 @@ for region_choice in ["OVR", "NA", "JP", "PAL", "OTHER"]:
     print(f"Building table for {region_choice}...")
     table = build_table(region_choice)
     all_tables[region_choice] = table
-
-    # Save individual
-    table.to_excel(
-        f"{output_prefix}_{region_choice}.xlsx", index=False
-    )
     table.to_csv(
         f"{output_prefix}_{region_choice}.csv", index=False
     )

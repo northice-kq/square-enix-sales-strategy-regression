@@ -3,7 +3,7 @@
 A linear regression analysis of historical video game sales data to advise Square Enix on platform, genre, regional production and distribution strategy.
 
 ## Overview
-This project uses VGChartz sales data (2000–2020) to estimate how critic score, release year, genre, and platform category relate to game sales. 
+This project uses VGChartz sales data (2000–2020) to estimate how critic score, release year, genre, platform category, and publisher class relate to game sales.
 Separate models are estimated for overall sales and for four regions: North America (NA), Japan (JP), PAL (Europe, Australia, New Zealand, and other PAL territories), and Other. 
 The goal is to provide evidence-based guidance for Square Enix on where to release games and which genres perform best by region.
 
@@ -19,7 +19,9 @@ The goal is to provide evidence-based guidance for Square Enix on where to relea
   - `release_date`
 
 Raw data files are located in `data/`. A trimmed dataset is also included for robustness checks.
-The trimmed dataset has cut top 1% and bottom 1% data by `total_sales`.
+The trimmed dataset has cut top 1% and bottom 1% data by `total_sales`. 
+
+A publisher-class variable was merged from the Steam dataset. Final modelling file: `data/VGCHARTZ_DATA_v1.1.csv`.
 
 ## Methodology
 
@@ -29,7 +31,7 @@ This project uses a pooled cross-sectional regression with time controls.
 Each observation is a game-platform release, not a time-series unit. 
 Our goal is to estimate how critic score, release year, genre, and platform category relate to sales, and to compare those relationships across regions.
 Therefore, we used Ordinary Least Squares (OLS) regression in order to estimate conditional mean effects. 
-It is transparent, well-understood, and allows hypothesis testing. With 15,842 observations and 24 predictors, it is well-powered for the project.
+It is transparent, well-understood, and allows hypothesis testing. With 15,842 observations and 28 predictors, it is well-powered for the project.
 
 #### Why not time series?
 Time-series models (ARIMA, VAR) require repeated observations of the same unit over regular intervals.
@@ -50,7 +52,7 @@ ANOVA alone cannot handle continuous predictors without binning. ANCOVA would be
 OLS is therefore the more general and interpretable choice.
 
 ANOVA also only tells whether group means differ, while we aim to have an interpretable effect relative to a baseline.
-Regression with dummy variables lets us set *Role-Playing* and *Sony Home* as references. 
+Regression with dummy variables lets us set *Role-Playing*, *Sony Home*, and *AAA* as references.
 As such, we can do comparisons across regions, platforms and genre.
 
 ### Data preparation
@@ -62,6 +64,9 @@ As such, we can do comparisons across regions, platforms and genre.
 - **Created `critic_clean` (median-filled for missing scores) and `critic_missing` flag**: Missing `critic_score` is more common for smaller, older, or regional titles. The flag lets the model estimate the separate effect of having no score
 - **Centered critic score at 7.3 and year at 2010**: Reduces collinearity and sets the baseline
 - **Log-transformed sales using `log1p`** Handles skew by compressing the scale and handles zero values
+- **Merged `publisherClass` from the Steam dataset** (AAA / AA / Indie / Hobbyist) via a two-step pipeline:
+  1. `parse_publisher_mapping.py` parses the raw Steam publisher list, applies manual overrides for major publishers, and resolves multi-class conflicts by highest class wins (AAA > AA > Indie > Hobbyist). Output: `data/publisher_to_class.csv`
+  2. `merge_publisher_class.py` normalises VGChartz publisher names, applies alias mapping (e.g. `EA Sports` → `Electronic Arts`), merges onto the main data, fills remaining gaps from a fallback map, and collapses `Hobbyist` into `Indie`. Unmatched publishers *(15%)* are kept as `Unknown`
 
 ### Model specification
 
@@ -73,6 +78,7 @@ log_region_sales = β0
                  + β3 year_c
                  + Σ γ genre
                  + Σ δ platform
+                 + Σ λ publisher_class
                  + ε error
 ```
 - **Dependent variable (y)**: `log_region_sales` for overall or regional sales.
@@ -80,11 +86,12 @@ log_region_sales = β0
   - Quantitative: `critic_c` centred at 7.3 (median), `critic_missing`, `year_c` (centred at 2010)
   - Genre dummies (reference: *Role-Playing*)
   - Platform category dummies (reference: *Sony Home*)
+  - Publisher class dummies (reference: *AAA*)
 - **Estimation**: OLS with HC3 robust standard errors.
 - **Validation**: VIF diagnostics (all < 5), condition numbers (< 110).
 - **Regional models**: Separate regressions for `NA`, `JP`, `PAL`, and `Other`. Categories with fewer than 30 observations in a region were dropped to avoid unstable estimates.  
 
-Therefore, the baseline of this model is a *Role-Playing Game* on *Sony Home*, released in year 2010, with a critic score of 7.3.
+Therefore, the baseline of this model is an *AAA-published Role-Playing Game* on *Sony Home*, released in year 2010, with a critic score of 7.3.
 
 ### Estimation
 
@@ -99,15 +106,15 @@ HC3 corrects the standard errors without changing the coefficients, and is the m
 | **Variance Inflation Factor (VIF)** | All VIFs below 5. Highest is 3.2.                              | - No problematic multicollinearity  <br/>- Coefficients are stable and standard errors are not inflated                                       |
 | **Condition number** | All models below 110                                           | Confirms the absence of severe multicollinearity                                                                                              |
 | **Residual diagnostics** | HC3 addresses heteroscedasticity, n = 15,842 overall           | Large sample supports the Central Limit Theorem for inference                                                                                 |
-| **R²** | 14.2% to 25.0% of variation in log sales, depending on region. | - Normal for sales data <br/>- Remaining variation is driven by unobserved factors such as marketing budget, IP strength, and platform deals. |
+| **R²** | 16.4% to 27.4% of variation in log sales, depending on region. | - Normal for sales data <br/>- Remaining variation is driven by unobserved factors such as marketing budget, franchise strength, and platform deals. |
 
 
-## Why Sony Home and Role-Playing are the reference dummy categories
+## Why Sony Home, Role-Playing, AAA are the reference dummy categories
 In a regression with dummy variables, one category from each group must be dropped to avoid perfect collinearity (the dummy variable trap). 
 The dropped category is the reference or *baseline*. 
 Every coefficient for the remaining categories is interpreted as a difference relative to that baseline.
 The choice of reference determines how every coefficient in the report is read. 
-Sony Home and Role-Playing were chosen because they match Square Enix’s core business and the client’s decision context.
+Sony Home, Role-Playing, and AAA were chosen because they match Square Enix’s core business and the client’s decision context.
 
 ### Sony Home was chosen as the platform reference because
 - *PlayStation* home consoles were Square Enix’s primary platform through the period covered by the data, particularly for *Final Fantasy Series* and *Kingdom Hearts*.
@@ -117,14 +124,26 @@ Sony Home and Role-Playing were chosen because they match Square Enix’s core b
 - Square Enix is fundamentally an RPG company. Its flagship franchises *Final Fantasy*, *Dragon Quest*, and *Kingdom Hearts*, are RPGs or RPG-adjacent.
 - Even though it does not hold the largest share of genres, it is the most decision-relevant framing for the client to set genre coefficient  as “compared to an RPG”.
 
+### AAA was chosen as the publisher-class reference because
+- Square Enix is itself an AAA publisher. Reading coefficients as "how much less does a non-AAA game sell compared to Square Enix's own tier" directly matches the client's decision context.
+- AAA accounts for the largest share of rows in the dataset, giving the most stable baseline.
+- It produces the natural comparison for, AAA vs AA vs Indie.
+
 ## How to Run
 
 1. **Install dependencies**
     ```bash
    pip install -r requirements.txt
    ```
-   
-2. **Run the model**  
+
+2. **Build publisher-class lookup and merge**  
+From the `scripts/` folder:
+    ```bash 
+    python parse_publisher_mapping.py
+    python merge_publisher_class.py
+    ```
+
+3. **Run the model**  
 From the `scripts/` folder:
     ```bash
    py scripts/run_model.py
@@ -132,7 +151,7 @@ From the `scripts/` folder:
    Choose `OVR` for overall sales, `ALLREG` for all four region sales respectively, or region code (`JP`, `NA`, `PAL`, `OTHER`)for a specific region.    
   
 
-3. **Generate tables and figures**  
+4. **Generate tables and figures**  
 From the `scripts/` folder:
     ```bash
    py scripts/table_and_graph_making.py
@@ -141,15 +160,21 @@ From the `scripts/` folder:
 
 ## Outputs
 - `output/coefficients/` - coefficient tables, comparison tables, p-value tables
+- `output/coefficients/standardized/` - standardised (Beta) coefficients, with `pct_effect` column
 - `output/vif/` - Variance Inflation Factor (VIF) diagnostics
-- `output/figures/` - heatmap, forest plots, genre comparison, platform comparison, coefficient comparison
+- `output/residuals/` - full residual tables (`residuals.csv`, `residuals_{region}.csv`)
+- `output/top_misses/` - top-10 under- and over-estimated games per region
+- `output/figures/` - heatmap, forest plots, genre comparison, platform comparison, publisher-class comparison, coefficient comparison, residual maps
 
 ## Key Findings
-- **Critic score** has a positive association with sales *(11.8%)*, strongest in `NA` *(8.2%)* and `PAL` *(6.0%)*, weak in `JP` *(1.3%)*
-- **Missing critic score** is a large negative signal overall *(-23.3%)*, but small in `JP` *(-1.8%)*
-- Effect of **Year** is practically negligible *(-0.1%)* and confounded with time-on-market. Older games have had more time to accumulate lifetime sales, which *may* slightly inflate their totals
+- **Critic score** has a positive association with sales *(+11.4%)*, strongest in `NA` *(+7.9%)* and `PAL` *(+5.8%)*, weak in `JP` *(+1.2%)*
+- **Missing critic score** is a large negative signal overall *(-21.8%)*, but small in `JP` *(-1.3%)*
+- Effect of **Year** is practically negligible *(-0.15%)* and confounded with time-on-market. Older games have had more time to accumulate lifetime sales, which *may* slightly inflate their totals
 - For **Game Genre**, in `JP`, RPG dominates, almost every other genre sells less. In `NA` and `PAL`, Shooter, Sports, and Racing sell more than RPG
 - For **Platform**, Sony Home is the strongest platform overall. Microsoft Home is statistically equal to Sony Home in `NA`, while Nintendo Handheld/Hybrid is equal to Sony Home in `JP`. PC/Mac is undercounted by VGChartz and should not be interpreted as weak
+- For **Publisher Class**, AAA games sell only 5–9% more than Indie games holding other factors constant - a much smaller effect than commonly assumed. Counterintuitively, Indie outperforms AA in every region. The mid-tier is squeezed.
+- **Franchise strength dominates publisher size.** Even after controlling for publisher class, the model still underestimates major franchise sequels (GTA V, Call of Duty, FIFA) by 2.0–2.6 log points. Adding publisher-class dummies reduced the top-20 residuals by only ~0.018 log points on average. AAA status does not capture brand equity
+- The **AA middle tier is squeezed**. Indie outperforms AA in every region (Indie is *1.7%*–*3.6%* below AAA; AA is *1.8%*–*8.5%* below AAA). Mid-sized publishers neither benefit from blockbuster marketing nor from indie word-of-mouth.
 
 ## Limitations
 - Available data from 2000 to 2020 only
@@ -157,7 +182,9 @@ From the `scripts/` folder:
 - VGChartz undercounts digital, PC, mobile, and indie sales
 - IP strength and marketing budgets are not in the data
 - Regional samples differ due to data availability
-- Model explains 14.2% to 25.0% of variation in log sales (R<sup>2</sup> = 0.142 in `JP`, R<sup>2</sup> = 0.250 in `OVR`), the rest is unobserved
+- Model explains *16.4%* to *27.4%* of variation in log sales (R<sup>2</sup> = 0.164 in `JP`, R<sup>2</sup> = 0.274 in `OVR`), the rest is unobserved
+- Publisher class is a coarse proxy. It cannot distinguish an AAA blockbuster from an AAA mid-tier title. Franchise identity, sequel number, and marketing budget remain unobserved
+- Publisher class matched 85% of rows from the Steam dataset; the remaining 15% are small publishers with no Steam entry, kept as `Unknown`
 
 ## Requirements
 - Python 3.9+

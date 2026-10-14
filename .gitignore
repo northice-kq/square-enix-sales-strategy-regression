@@ -16,11 +16,13 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# vif
-output/vif/*
-
-# coefficients
+# output
 output/coefficients/*
-
-!output/coefficients/standardized
+output/vif/*
+output/residuals/*
+!output/coefficients/standardized/
 !output/coefficients/comparison_table.csv
+
+# reproducable data
+data/publisher_to_class.csv
+data/unmatched_publishers.csv
