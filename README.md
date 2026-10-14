@@ -19,7 +19,9 @@ The goal is to provide evidence-based guidance for Square Enix on where to relea
   - `release_date`
 
 Raw data files are located in `data/`. A trimmed dataset is also included for robustness checks.
-The trimmed dataset has cut top 1% and bottom 1% data by `total_sales`.
+The trimmed dataset has cut top 1% and bottom 1% data by `total_sales`. 
+
+A publisher-class variable was merged from the Steam dataset. Final modelling file: `data/VGCHARTZ_DATA_v1.1.csv`.
 
 ## Methodology
 
@@ -29,7 +31,7 @@ This project uses a pooled cross-sectional regression with time controls.
 Each observation is a game-platform release, not a time-series unit. 
 Our goal is to estimate how critic score, release year, genre, and platform category relate to sales, and to compare those relationships across regions.
 Therefore, we used Ordinary Least Squares (OLS) regression in order to estimate conditional mean effects. 
-It is transparent, well-understood, and allows hypothesis testing. With 15,842 observations and 27 predictors, it is well-powered for the project.
+It is transparent, well-understood, and allows hypothesis testing. With 15,842 observations and 28 predictors, it is well-powered for the project.
 
 #### Why not time series?
 Time-series models (ARIMA, VAR) require repeated observations of the same unit over regular intervals.
@@ -62,7 +64,9 @@ As such, we can do comparisons across regions, platforms and genre.
 - **Created `critic_clean` (median-filled for missing scores) and `critic_missing` flag**: Missing `critic_score` is more common for smaller, older, or regional titles. The flag lets the model estimate the separate effect of having no score
 - **Centered critic score at 7.3 and year at 2010**: Reduces collinearity and sets the baseline
 - **Log-transformed sales using `log1p`** Handles skew by compressing the scale and handles zero values
-- **Merged `publisherClass` from the Steam dataset** (AAA / AA / Indie / Hobbyist). Hobbyist collapsed into `Indie`. Unmatched publishers *(15%)* kept as `Unknown`
+- **Merged `publisherClass` from the Steam dataset** (AAA / AA / Indie / Hobbyist) via a two-step pipeline:
+  1. `parse_publisher_mapping.py` parses the raw Steam publisher list, applies manual overrides for major publishers, and resolves multi-class conflicts by highest class wins (AAA > AA > Indie > Hobbyist). Output: `data/publisher_to_class.csv`
+  2. `merge_publisher_class.py` normalises VGChartz publisher names, applies alias mapping (e.g. `EA Sports` → `Electronic Arts`), merges onto the main data, fills remaining gaps from a fallback map, and collapses `Hobbyist` into `Indie`. Unmatched publishers *(15%)* are kept as `Unknown`
 
 ### Model specification
 
@@ -131,8 +135,15 @@ Sony Home, Role-Playing, and AAA were chosen because they match Square Enix’s 
     ```bash
    pip install -r requirements.txt
    ```
-   
-2. **Run the model**  
+
+2. **Build publisher-class lookup and merge**  
+From the `scripts/` folder:
+    ```bash 
+    python parse_publisher_mapping.py
+    python merge_publisher_class.py
+    ```
+
+3. **Run the model**  
 From the `scripts/` folder:
     ```bash
    python run_model.py
@@ -140,7 +151,7 @@ From the `scripts/` folder:
    Choose `OVR` for overall sales, `ALLREG` for all four region sales respectively, or region code (`JP`, `NA`, `PAL`, `OTHER`)for a specific region.    
   
 
-3. **Generate tables and figures**  
+4. **Generate tables and figures**  
 From the `scripts/` folder:
     ```bash
    python table_and_graph_making.py
@@ -149,8 +160,11 @@ From the `scripts/` folder:
 
 ## Outputs
 - `output/coefficients/` - coefficient tables, comparison tables, p-value tables
+- `output/coefficients/standardized/` - standardised (Beta) coefficients, with `pct_effect` column
 - `output/vif/` - Variance Inflation Factor (VIF) diagnostics
-- `output/figures/` - heatmap, forest plots, genre comparison, platform comparison, coefficient comparison
+- `output/residuals/` - full residual tables (`residuals.csv`, `residuals_{region}.csv`)
+- `output/top_misses/` - top-10 under- and over-estimated games per region
+- `output/figures/` - heatmap, forest plots, genre comparison, platform comparison, publisher-class comparison, coefficient comparison, residual maps
 
 ## Key Findings
 - **Critic score** has a positive association with sales *(+11.4%)*, strongest in `NA` *(+7.9%)* and `PAL` *(+5.8%)*, weak in `JP` *(+1.2%)*
@@ -158,8 +172,8 @@ From the `scripts/` folder:
 - Effect of **Year** is practically negligible *(-0.15%)* and confounded with time-on-market. Older games have had more time to accumulate lifetime sales, which *may* slightly inflate their totals
 - For **Game Genre**, in `JP`, RPG dominates, almost every other genre sells less. In `NA` and `PAL`, Shooter, Sports, and Racing sell more than RPG
 - For **Platform**, Sony Home is the strongest platform overall. Microsoft Home is statistically equal to Sony Home in `NA`, while Nintendo Handheld/Hybrid is equal to Sony Home in `JP`. PC/Mac is undercounted by VGChartz and should not be interpreted as weak
-- For **Publisher Class**, AAA games sell only 5–9% more than Indie games holding other factors constant — a much smaller effect than commonly assumed. Counterintuitively, Indie outperforms AA in every region. The mid-tier is squeezed.
-- **Franchise strength dominates publisher size.** Even after controlling for publisher class, the model still under-predicts major franchise sequels (GTA V, Call of Duty, FIFA) by 2.0–2.6 log points. This shows **AAA status does not capture brand equity**.
+- For **Publisher Class**, AAA games sell only 5–9% more than Indie games holding other factors constant - a much smaller effect than commonly assumed. Counterintuitively, Indie outperforms AA in every region. The mid-tier is squeezed.
+- **Franchise strength dominates publisher size.** Even after controlling for publisher class, the model still underestimates major franchise sequels (GTA V, Call of Duty, FIFA) by 2.0–2.6 log points. Adding publisher-class dummies reduced the top-20 residuals by only ~0.018 log points on average. AAA status does not capture brand equity
 - The **AA middle tier is squeezed**. Indie outperforms AA in every region (Indie is *1.7%*–*3.6%* below AAA; AA is *1.8%*–*8.5%* below AAA). Mid-sized publishers neither benefit from blockbuster marketing nor from indie word-of-mouth.
 
 ## Limitations
